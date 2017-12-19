@@ -1,0 +1,34 @@
+[comment]
+   Written by MOSEK version 8.1.0.31
+   Date 30-10-17
+   Time 14:13:43
+[/comment]
+
+[hints]
+  [hint NUMVAR] 4 [/hint]
+  [hint NUMCON] 3 [/hint]
+  [hint NUMANZ] 9 [/hint]
+  [hint NUMQNZ] 0 [/hint]
+  [hint NUMCONE] 0 [/hint]
+[/hints]
+
+[variables disallow_new_variables]
+  x0000 x0001 x0002 x0003 
+[/variables]
+
+[objective minimize]
+   - 3e+00 x0000 - x0001 - 5e+00 x0002 - x0003
+[/objective]
+
+[constraints]
+  [con c0000]  - 2e+00 x0000 - x0001 - 3e+00 x0002 - x0003 <= -1.5e+01 [/con]
+  [con c0001]  2e+00 x0001 + 3e+00 x0003 <= 2.5e+01 [/con]
+  [con c0002]  3e+00 x0000 + x0001 + 2e+00 x0002 = 3e+01 [/con]
+[/constraints]
+
+[bounds]
+  [b] 0e+00      <= x0000 [/b]
+  [b] 0e+00      <= x0001 <= 1e+01 [/b]
+  [b] 0e+00      <= x0002,x0003 [/b]
+[/bounds]
+
