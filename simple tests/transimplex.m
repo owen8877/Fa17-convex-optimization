@@ -2,53 +2,67 @@ function [X, out, val] = transimplex(~, cost, mu, nu, opts)
     [m, n] = size(cost);
     
     % generate a first feasible solution
-    x = sparse(m, n);
-    tmpmu = mu; tmpnu = nu;
-    i = 1; j = 1;
-    for l = 1:m+n-1
-        if tmpmu(i) > tmpnu(j)
-            x(i, j) = tmpnu(j);
-            tmpmu(i) = tmpmu(i) - tmpnu(j);
-            j = j + 1;
-        else
-            x(i, j) = tmpmu(i);
-            tmpnu(j) = tmpnu(j) - tmpmu(i);
-            i = i + 1;
-        end
-    end
-    
-%     function setuv(index, lastindex, dir)
-%         if dir % know u, operate on v
-%             indexes = find(x(index, :));
-%             for op = indexes
-%                 if op == lastindex
-%                     continue
-%                 end
-%                 v(op) = cost(index, op) - u(index);
-%                 setuv(op, index, false);
-%             end
+%     x = sparse(m, n);
+%     tmpmu = mu; tmpnu = nu;
+%     i = 1; j = 1;
+%     for l = 1:m+n-1
+%         if tmpmu(i) > tmpnu(j)
+%             x(i, j) = tmpnu(j);
+%             tmpmu(i) = tmpmu(i) - tmpnu(j);
+%             j = j + 1;
 %         else
-%             indexes = find(x(:, index))';
-%             for op = indexes
-%                 if op == lastindex
-%                     continue
-%                 end
-%                 u(op) = cost(op, index) - v(index);
-%                 setuv(op, index, true);
-%             end
+%             x(i, j) = tmpmu(i);
+%             tmpnu(j) = tmpnu(j) - tmpmu(i);
+%             i = i + 1;
 %         end
 %     end
+    x = sparse(m, n);
+    workingmu = mu;
+    workingnu = nu;
+    searchOnRow = true; % search on some row
+    bakcost = cost;
+    workingcost = cost(1, :);
+    currentRow = 1;
+    for l = 1:m+n-1
+        if searchOnRow
+            [~, currentCol] = min(workingcost);
+            if workingnu(currentCol) > workingmu(currentRow)
+                x(currentRow, currentCol) = workingmu(currentRow);
+                workingnu(currentCol) = workingnu(currentCol) - workingmu(currentRow);
+                workingmu(currentRow) = 0;
+                searchOnRow = false;
+                bakcost(currentRow, :) = Inf;
+                workingcost = bakcost(:, currentCol);
+            else
+                x(currentRow, currentCol) = workingnu(currentCol);
+                workingmu(currentRow) = workingmu(currentRow) - workingnu(currentCol);
+                workingnu(currentCol) = 0;
+                workingcost(currentCol) = Inf;
+                bakcost(:, currentCol) = Inf;
+            end
+        else
+            [~, currentRow] = min(workingcost, [], 1);
+            if workingmu(currentRow) > workingnu(currentCol)
+                x(currentRow, currentCol) = workingnu(currentCol);
+                workingmu(currentRow) = workingmu(currentRow) - workingnu(currentCol);
+                workingnu(currentCol) = 0;
+                searchOnRow = true;
+                bakcost(:, currentCol) = Inf;
+                workingcost = bakcost(currentRow, :);
+            else
+                x(currentRow, currentCol) = workingmu(currentRow);
+                workingnu(currentCol) = workingnu(currentCol) - workingmu(currentRow);
+                workingmu(currentRow) = 0;
+                workingcost(currentRow) = Inf;
+                bakcost(currentRow, :) = Inf;
+            end
+        end
+        help = [bakcost workingmu; workingnu' -Inf];
+    end
+    
+    
     
     itr = 1;
-%     uncertainx = cell(m, 1);
-%     uncertainy = cell(n, 1);
-%     uncertain = java.util.HashSet(m+n);
-    for i = 1:m
-        uncertainx{i} = java.util.HashSet(5);
-    end
-    for j = 1:n
-        uncertainy{j} = java.util.HashSet(5);
-    end
     while true
         % compute multipliers u and v
         u = zeros(m, 1); v = zeros(1, n);
@@ -113,65 +127,32 @@ function [X, out, val] = transimplex(~, cost, mu, nu, opts)
         
         % assign sign to basi
         [xi, xj, ~] = find(x);
-        % signM = spalloc(m, n, m+n);
-        signM = sparse([xi; nrIndex], [xj; ncIndex], [zeros(size(xi, 1), 1); 1]);
-        uncertain = sparse(xi, xj, 1);
-        [uncertainRow, uncertainColumn] = find(uncertain);
-        uindex = size(uncertainRow, 1);
-%         for l = 1:size(xi, 1)
-% %             if ~uncertainx.containsKey(xi(l))
-% %                 uncertainx.put(xi(l), java.util.HashSet());
-% %             end
-%             uncertainx{xi(l)}.add(xj(l));
-% %             if ~uncertainy.containsKey(xj(l))
-% %                 uncertainy.put(xj(l), java.util.HashSet());
-% %             end
-%             uncertainy{xj(l)}.add(xi(l));
-%             uncertain.add([xi(l), xj(l)]);
-%         end
-        
-%         iterator = uncertain.iterator();
-%         while ~uncertain.isEmpty()
-        while nnz(uncertain) > 0
-%             uItem = iterator.next();
-%             ur = uItem(1);
-%             uc = uItem(2);
-            ur = uncertainRow(uindex);
-            uc = uncertainColumn(uindex);
-            
-            % scan row first
-%             if uncertainx{ur}.size() == 1
-            if size(find(uncertain(ur, :)), 2) == 1
-                % yeah, just one element left
-                signM(ur, uc) = -sum(signM(ur, :));
-%                 uncertainx{ur}.clear();
-%                 uncertainy{uc}.remove(ur);
-%                 iterator.remove();
-                uncertain(ur, uc) = 0;
-                [uncertainRow, uncertainColumn] = find(uncertain);
-%             elseif uncertainy{uc}.size() == 1
-            elseif size(find(uncertain(:, uc)), 1) == 1
-                signM(ur, uc) = -sum(signM(:, uc));
-%                 uncertainy{uc}.clear();
-%                 uncertainx{ur}.remove(uc);
-%                 iterator.remove();
-                uncertain(ur, uc) = 0;
-                [uncertainRow, uncertainColumn] = find(uncertain);
-            end
-            
-%             if ~iterator.hasNext()
-%                 iterator = uncertain.iterator();
+        signM = loopFinder(x, [nrIndex ncIndex]);
+%         signM = sparse([xi; nrIndex], [xj; ncIndex], [zeros(size(xi, 1), 1); 1]);
+%         uncertain = sparse(xi, xj, 1);
+%         [uncertainRow, uncertainColumn] = find(uncertain);
+%         uindex = size(uncertainRow, 1);
+%         
+%         while nnz(uncertain) > 0
+%             ur = uncertainRow(uindex);
+%             uc = uncertainColumn(uindex);
+%             
+%             % scan row first
+%             if size(find(uncertain(ur, :)), 2) == 1
+%                 % yeah, just one element left
+%                 signM(ur, uc) = -sum(signM(ur, :));
+%                 uncertain(ur, uc) = 0;
+%                 [uncertainRow, uncertainColumn] = find(uncertain);
+%             elseif size(find(uncertain(:, uc)), 1) == 1
+%                 signM(ur, uc) = -sum(signM(:, uc));
+%                 uncertain(ur, uc) = 0;
+%                 [uncertainRow, uncertainColumn] = find(uncertain);
 %             end
-            uindex = uindex - 1;
-            if uindex <= 0
-                uindex = size(uncertainRow, 1);
-            end
-        end
-%         for i = 1:m
-%             uncertainx{i}.clear();
-%         end
-%         for j = 1:n
-%             uncertainy{j}.clear();
+%             
+%             uindex = uindex - 1;
+%             if uindex <= 0
+%                 uindex = size(uncertainRow, 1);
+%             end
 %         end
         
         % now find the min reduction
@@ -180,6 +161,7 @@ function [X, out, val] = transimplex(~, cost, mu, nu, opts)
         [~, ~, feasibleVals] = find(feasibleReduction);
         [minReduction, ~] = min(feasibleVals);
         x = x + minReduction * signM;
+        % x(iii(cor), jjj(cor)) = 0;
         
         if mod(itr, 100) == 0
             fprintf('%d\t%.4e\n', itr, full(sum(sum(x.*cost))));

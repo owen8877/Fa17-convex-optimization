@@ -3,8 +3,8 @@
 clc; clear
 
 %% generate data
-n = 64;
-m = 64;
+n = 1024;
+m = 1024;
 
 % random cost
 C = rand(m,n);
@@ -29,9 +29,10 @@ draw = false;
 query = {...
     {@dir_mosek, 'dir_mosek_interior', struct('method', 'interior')}; ...
     {@dir_mosek, 'dir_mosek_simplex', struct('method', 'simplex')}; ...
-%     {@admm, 'admm', struct('nesterov', true, 'tor', 1e-4)}; ...
-%     {@admm, 'admm', struct('nesterov', false, 'tor', 5e-5)}; ...
-    {@transimplex, 'transimplex', struct()}
+%     {@admm, 'admm_nesterov', struct('nesterov', true, 'tor', 1e-9)}; ...
+%     {@admm, 'admm', struct('nesterov', false, 'tor', 1e-9)}; ...
+%     {@transimplex, 'transimplex', struct()}; ...
+    {@ctransimplexWrapper, 'ctransimples', struct()}; ...
 };
 caseN = size(query, 1);
 
@@ -46,7 +47,7 @@ end
 
 %% print
 cpu = cellfun(@(c) c.t, results)';
-funcval = cellfun(@(c) c.out, results)';
+funcval = cellfun(@(c) full(c.out), results)';
 error = cellfun(@(c) errfun(results{1}.x, c.x), results)';
 method = cellfun(@(c) c{2}, query, 'UniformOutput', false)';
 resTable = table(cpu, error, funcval, 'RowNames', method);
