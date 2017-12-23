@@ -1,8 +1,11 @@
+#include "mex.h"
 #include <vector>
 #include <limits>
 #include <cstdlib>
 #include <cstdio>
 #include <algorithm>
+#include <ctime>
+#include <tuple>
 
 using namespace std;
 
@@ -24,27 +27,27 @@ int nr, nc;
 
 void printArray(const vector<double> & array) {
     for (unsigned int i = 0; i < array.size(); ++i) {
-        printf("%.2e ", array[i]);
+        mexPrintf("%.2e ", array[i]);
     }
-    printf("\n");
+    mexPrintf("\n");
 }
 
 void printx() {
-    printf("================\n");
+    mexPrintf("================\n");
     for (unsigned int i = 0; i < x.size(); ++i) {
-        // printf("(%d, %d)\t%.1e\n", x[i]->p, x[i]->q, x[i]->val);
-        // printf("\tv: ");
-        printf("(%d, %d)\tv: ", x[i]->p, x[i]->q);
+        // mexPrintf("(%d, %d)\t%.1e\n", x[i]->p, x[i]->q, x[i]->val);
+        // mexPrintf("\tv: ");
+        mexPrintf("(%d, %d)\tv: ", x[i]->p, x[i]->q);
         for (unsigned int j = 0; j < x[i]->vNeighbours.size(); ++j) {
-            printf("(%d, %d) ", x[i]->vNeighbours[j]->p, x[i]->vNeighbours[j]->q);
+            mexPrintf("(%d, %d) ", x[i]->vNeighbours[j]->p, x[i]->vNeighbours[j]->q);
         }
-        printf("\n\th: ");
+        mexPrintf("\n\th: ");
         for (unsigned int j = 0; j < x[i]->hNeighbours.size(); ++j) {
-            printf("(%d, %d) ", x[i]->hNeighbours[j]->p, x[i]->hNeighbours[j]->q);
+            mexPrintf("(%d, %d) ", x[i]->hNeighbours[j]->p, x[i]->hNeighbours[j]->q);
         }
-        printf("\n");
+        mexPrintf("\n");
     }
-    printf("================\n");
+    mexPrintf("================\n");
 }
 
 void setCostToInf(vector<vector<double>> & bakcost, bool direction, int index) {
@@ -53,7 +56,7 @@ void setCostToInf(vector<vector<double>> & bakcost, bool direction, int index) {
             bakcost[index][j] = numeric_limits<double>::infinity();
         }
     } else {
-        for (int i = 0; i < n; ++i) {
+        for (int i = 0; i < m; ++i) {
             bakcost[i][index] = numeric_limits<double>::infinity();
         }
     }
@@ -145,7 +148,7 @@ void initialSolution() {
 }
 
 void updateuvcore(corValPair* node, bool searchOnRow) {
-    // printf("(%d, %d)\n", node->p, node->q);
+    // mexPrintf("(%d, %d)\n", node->p, node->q);
     if (searchOnRow) {
         u[node->p] = cost[node->p][node->q] - v[node->q];
         for (unsigned int j = 0; j < node->hNeighbours.size(); ++j) {
@@ -157,7 +160,7 @@ void updateuvcore(corValPair* node, bool searchOnRow) {
             updateuvcore(node->vNeighbours[i], true);
         }
     }
-    // printf("Finish.\n");
+    // mexPrintf("Finish.\n");
 }
 
 void updateuv() {
@@ -169,22 +172,21 @@ void updateuv() {
     }
 }
 
+int lastrow = 0;
 bool mostnegative(int& nr, int& nc) {
-    // printf("Relative cost.\n");
-    double val = 0;
-    for (int i = 0; i < m ; ++i) {
+    for (int _i = lastrow; _i < m+lastrow ; ++_i) {
+        int i = _i % m;
         for (int j = 0; j < n; ++j) {
             double tmp = cost[i][j] - u[i] - v[j];
-            // printf("%.1e\t", tmp);
-            if (tmp < val) {
-                val = tmp;
+            if (tmp < -1e-15) {
                 nr = i;
                 nc = j;
+                lastrow = (_i+1)%m;
+                return true;
             }
         }
-        // printf("\n");
     }
-    return (val < -1e-15);
+    return false;
 }
 
 double globalMin;
@@ -220,71 +222,110 @@ bool happySearch(int depth, bool searchOnRow, corValPair* node, double currentMi
 }
 
 void core() {
+    // clock_t begin = clock();
+
     initialSolution();
-    // printx();
+
+    // clock_t end = clock();
+    // double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    // mexPrintf("%.4fs have been used on inital.\n", elapsed_secs);
+    // begin = clock();
+
     int itr = 1;
     while (true) {
-        double sum = 0.0;
-        for (unsigned int i = 0; i < x.size(); ++i) {
-            sum += x[i]->val * cost[x[i]->p][x[i]->q];
+        if (itr % 2000 == 0) {
+            double sum = 0.0;
+            for (unsigned int i = 0; i < x.size(); ++i) {
+                sum += x[i]->val * cost[x[i]->p][x[i]->q];
+            }
+            mexPrintf("Iteration %d\t%e\n", itr, sum);
         }
-        printf("Iteration %d\t%e\n", itr, sum);
         // update the multipliers
         updateuv();
-        // printArray(u);
-        // printArray(v);
         // returns false if all relative cost are non-negative
         if (!mostnegative(nr, nc)) {
             break;
         }
         corValPair* newNode = new corValPair(nr, nc, 0.0);
-        // printf("New location: %d %d\n", nr, nc);
         addNode(newNode);
-        // printx();
-        // printf("=======\n");
         corValPair* dontForgetToDelete = new corValPair(nr, nc, numeric_limits<double>::infinity());
         if (!happySearch(0, false, newNode, numeric_limits<double>::infinity(), dontForgetToDelete)) {
-            printf("CTransimplex:core\tLoop detection failed!\n");
+            mexPrintf("CTransimplex:core\tLoop detection failed!\n");
             printx();
             return;
         }
-        // printf("[%d, %d] => [%d, %d]\n", globalCor->p, globalCor->q, nr, nc);
         delete dontForgetToDelete;
         rmNode(globalCor);
-        // printx();
         itr++;
     }
 }
 
-int main() {
-    m = 1024; n = 1024;
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
+    if (nrhs != 5) {
+        mexErrMsgIdAndTxt("CTransimplex:gateway:nrhs", "Need five inputs!");
+        return;
+    }
+    if (nlhs != 2) {
+        mexErrMsgIdAndTxt("CTransimplex:gateway:nlhs", "Need two outputs!");
+        return;
+    }
+    
+    // read in data
+    // cost matrix
+    double* costRe;
+    m = mxGetM(prhs[1]);
+    n = mxGetN(prhs[1]);
     cost = vector<vector<double>>(m);
-    for (int i = 0; i < m; ++i) {
-        cost[i].resize(n);
-        for (int j = 0; j < n; ++j) {
-            cost[i][j] = (rand()+0.0) / RAND_MAX;
-        }
+    costRe = mxGetPr(prhs[1]);
+    // mu
+    double* muRe;
+    muRe = mxGetPr(prhs[2]);
+    if (m != mxGetElementSize(muRe)) {
+        mexErrMsgIdAndTxt("CTransimplex:gateway:mu", "Mu dimension not match with cost matrix!");
+        return;
     }
     mu = vector<double>(m);
     u = vector<double>(m);
-    double musum = 0;
-    for (int i = 0; i < m; ++i) {
-        mu[i] = (rand()+0.0) / RAND_MAX;
-        musum += mu[i];
-    }
-    for (int i = 0; i < m; ++i) {
-        mu[i] /= musum;
+    // nu
+    double* nuRe;
+    nuRe = mxGetPr(prhs[3]);
+    if (n != mxGetElementSize(nuRe)) {
+        mexErrMsgIdAndTxt("CTransimplex:gateway:nu", "Nu dimension not match with cost matrix!");
+        return;
     }
     nu = vector<double>(n);
     v = vector<double>(n);
-    double nusum = 0;
-    for (int j = 0; j < n; ++j) {
-        nu[j] = (rand()+0.0) / RAND_MAX;
-        nusum += nu[j];
+
+    for (int i = 0; i < m; ++i) {
+        cost[i].resize(n);
+        for (int j = 0; j < n; ++j) {
+            cost[i][j] = costRe[m*j+i];
+        }
     }
+    
+    for (int i = 0; i < m; ++i) {
+        mu[i] = muRe[i];
+    }
+    
     for (int j = 0; j < n; ++j) {
-        nu[j] /= nusum;
+        nu[j] = nuRe[j];
     }
 
+    // some magic here
     core();
+    
+    plhs[0] = mxCreateNumericMatrix(2, x.size(), mxINT32_CLASS, mxREAL);
+    int32_t* val1 = (int32_t*) mxGetData(plhs[0]);
+    for (unsigned int i = 0; i < x.size(); ++i) {
+        val1[2*i] = x[i]->p;
+        val1[2*i+1] = x[i]->q;
+    }
+    plhs[1] = mxCreateDoubleMatrix(1, x.size(), mxREAL);
+    double* val2 = mxGetPr(plhs[1]);
+    for (unsigned int i = 0; i < x.size(); ++i) {
+        val2[i] = x[i]->val;
+        delete x[i];
+    }
+
+    return;
 }
