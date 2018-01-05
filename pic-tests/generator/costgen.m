@@ -1,4 +1,4 @@
-resolutions = [16 32 64];
+resolutions = [8 16 24 32 64];
 m = numel(resolutions);
 
 costs = cell(m, 1);

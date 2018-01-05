@@ -3,13 +3,13 @@
 clc; clear
 
 % cost matrix
+testResolution = 1;
 costData = load('data/cost.mat');
-C = costData.data{3};
+C = costData.data{testResolution};
 
 pic1Data = load('data/pic1.mat');
-mu = pic1Data.data{1, 3};
-nu = pic1Data.data{2, 3};
-fprintf('Resolution %dx%d\n', pic1Data.resolutions(3), pic1Data.resolutions(3));
+k = pic1Data.picN;
+fprintf('Resolution %dx%d\n', pic1Data.resolutions(testResolution), pic1Data.resolutions(testResolution));
 
 x0 = [];
 
@@ -18,29 +18,48 @@ draw = false;
 
 %% test query
 query = {...
-%     {@dir_mosek, 'dir_mosek_simplex', struct('method', 'simplex')}; ...
-%     {@transimplexWrapper, 'tran_simplex_normal', struct('method', 'normal')}; ...
+    {@dir_mosek, 'dir_mosek_simplex', struct('method', 'simplex')}; ...
+    {@transimplexWrapper, 'tran_simplex_normal', struct('method', 'normal')}; ...
     {@transimplexWrapper, 'tran_simplex_improved', struct('method', 'improved')}; ...
+    {@transimplexWrapper, 'tran_simplex_shielding', struct('method', 'shielding')}; ...
     {@transimplexWrapper, 'tran_simplex_shortlist', struct('method', 'shortlist')}; ...
 };
 caseN = size(query, 1);
 
-results = cell(1, caseN);
-for i = 1:caseN
-    opts = query{i}{3};
-    opts.draw = draw;
-    tic;
-    [results{i}.x, results{i}.out, results{i}.val] = query{i}{1}(x0, C, mu, nu, opts);
-    results{i}.t = toc;
+results = cell(k*(k-1)/2, caseN);
+itr = 1;
+for findex = 1:k
+    mu = pic1Data.data{findex, testResolution};
+    for bindex = findex+1:k
+        nu = pic1Data.data{bindex, testResolution};
+        for i = 1:caseN
+            opts = query{i}{3};
+            opts.draw = draw;
+            tic;
+            [results{itr, i}.x, results{itr, i}.out, results{itr, i}.val] = query{i}{1}(x0, C, mu, nu, opts);
+            results{itr, i}.t = toc;
+        end
+        itr = itr + 1;
+    end
 end
 
 %% print
 cpu = cellfun(@(c) c.t, results)';
+cpu = cpu(:, 1);
 funcval = cellfun(@(c) full(c.out), results)';
+funcval = funcval(:, 1);
 error = cellfun(@(c) errfun(results{1}.x, c.x), results)';
+error = error(:, 1);
 method = cellfun(@(c) c{2}, query, 'UniformOutput', false)';
 resTable = table(cpu, error, funcval, 'RowNames', method);
+fprintf('The first test case:\n')
+disp(resTable)
 
+cpu = cellfun(@(c) c.t, results)';
+cpu = cpu(:, 1);
+method = cellfun(@(c) c{2}, query, 'UniformOutput', false)';
+resTable = table(cpu, 'RowNames', method);
+fprintf('Average test case:\n')
 disp(resTable)
 
 % if draw

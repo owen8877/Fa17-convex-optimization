@@ -1,4 +1,4 @@
-resolutions = [16 32 64];
+resolutions = [8 16 24 32 64];
 m = numel(resolutions);
 k = 5; % pic numbers of one resolution
 
@@ -14,7 +14,7 @@ for itr = 1:m
 end
 
 picstruct.resolutions = resolutions;
-picsrtuct.picN = k;
+picstruct.picN = k;
 picstruct.data = pic;
 
 save ../data/pic1.mat -struct picstruct

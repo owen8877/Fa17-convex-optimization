@@ -7,6 +7,8 @@
 #include <ctime>
 #include <tuple>
 
+#define _Inf_ numeric_limits<double>::infinity()
+
 using namespace std;
 
 class corValPair {
@@ -53,17 +55,17 @@ void printx() {
 void setCostToInf(vector<vector<double>> & bakcost, bool direction, int index) {
     if (direction) {
         for (int j = 0; j < n; ++j) {
-            bakcost[index][j] = numeric_limits<double>::infinity();
+            bakcost[index][j] = _Inf_;
         }
     } else {
         for (int i = 0; i < m; ++i) {
-            bakcost[i][index] = numeric_limits<double>::infinity();
+            bakcost[i][index] = _Inf_;
         }
     }
 }
 
 int argmin(const vector<double> & array) {
-    int where = 0; double value = numeric_limits<double>::infinity();
+    int where = 0; double value = _Inf_;
     for (unsigned int i = 0; i < array.size(); ++i) {
         if (array[i] < value) {
             where = i;
@@ -124,7 +126,7 @@ void initialSolution() {
                 addNode(new corValPair(currentRow, currentCol, workingnu[currentCol]));
                 workingmu[currentRow] = workingmu[currentRow] - workingnu[currentCol];
                 workingnu[currentCol] = 0;
-                workingcost[currentCol] = numeric_limits<double>::infinity();
+                workingcost[currentCol] = _Inf_;
                 setCostToInf(bakcost, false, currentCol);
             }
         } else {
@@ -140,7 +142,7 @@ void initialSolution() {
                 addNode(new corValPair(currentRow, currentCol, workingmu[currentRow]));
                 workingnu[currentCol] = workingnu[currentCol] - workingmu[currentRow];
                 workingmu[currentRow] = 0;
-                workingcost[currentRow] = numeric_limits<double>::infinity();
+                workingcost[currentRow] = _Inf_;
                 setCostToInf(bakcost, true, currentRow);
             }
         }
@@ -248,8 +250,8 @@ void core() {
         }
         corValPair* newNode = new corValPair(nr, nc, 0.0);
         addNode(newNode);
-        corValPair* dontForgetToDelete = new corValPair(nr, nc, numeric_limits<double>::infinity());
-        if (!happySearch(0, false, newNode, numeric_limits<double>::infinity(), dontForgetToDelete)) {
+        corValPair* dontForgetToDelete = new corValPair(nr, nc, _Inf_);
+        if (!happySearch(0, false, newNode, _Inf_, dontForgetToDelete)) {
             mexPrintf("CTransimplex:core\tLoop detection failed!\n");
             printx();
             return;
@@ -278,18 +280,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     cost = vector<vector<double>>(m);
     costRe = mxGetPr(prhs[1]);
     // mu
-    double* muRe;
-    muRe = mxGetPr(prhs[2]);
-    if (m != mxGetElementSize(muRe)) {
+    double* muRe = mxGetPr(prhs[2]);
+    if (m != mxGetM(prhs[2])) {
         mexErrMsgIdAndTxt("CTransimplex:gateway:mu", "Mu dimension not match with cost matrix!");
         return;
     }
     mu = vector<double>(m);
     u = vector<double>(m);
     // nu
-    double* nuRe;
-    nuRe = mxGetPr(prhs[3]);
-    if (n != mxGetElementSize(nuRe)) {
+    double* nuRe = mxGetPr(prhs[3]);
+    if (n != mxGetM(prhs[3])) {
         mexErrMsgIdAndTxt("CTransimplex:gateway:nu", "Nu dimension not match with cost matrix!");
         return;
     }

@@ -5,15 +5,11 @@
 #include <algorithm>
 #include <ctime>
 #include <tuple>
+#include <cmath>
+
+#define _Inf_ numeric_limits<double>::infinity()
 
 using namespace std;
-
-// cycle per percent
-const double __p__ = 0.05;
-// discover items
-const int __k__ = 30;
-// short list length
-const int __s__ = 40;
 
 class corValPair {
 public:
@@ -25,7 +21,7 @@ public:
 };
 
 vector<corValPair*> x;
-int m, n;
+int m, n, res;
 vector<vector<double>> cost;
 vector<double> mu, u;
 vector<double> nu, v;
@@ -59,17 +55,17 @@ void printx() {
 void setCostToInf(vector<vector<double>> & bakcost, bool direction, int index) {
     if (direction) {
         for (int j = 0; j < n; ++j) {
-            bakcost[index][j] = numeric_limits<double>::infinity();
+            bakcost[index][j] = _Inf_;
         }
     } else {
         for (int i = 0; i < m; ++i) {
-            bakcost[i][index] = numeric_limits<double>::infinity();
+            bakcost[i][index] = _Inf_;
         }
     }
 }
 
 int argmin(const vector<double> & array) {
-    int where = 0; double value = numeric_limits<double>::infinity();
+    int where = 0; double value = _Inf_;
     for (unsigned int i = 0; i < array.size(); ++i) {
         if (array[i] < value) {
             where = i;
@@ -130,7 +126,7 @@ void initialSolution() {
                 addNode(new corValPair(currentRow, currentCol, workingnu[currentCol]));
                 workingmu[currentRow] = workingmu[currentRow] - workingnu[currentCol];
                 workingnu[currentCol] = 0;
-                workingcost[currentCol] = numeric_limits<double>::infinity();
+                workingcost[currentCol] = _Inf_;
                 setCostToInf(bakcost, false, currentCol);
             }
         } else {
@@ -146,7 +142,7 @@ void initialSolution() {
                 addNode(new corValPair(currentRow, currentCol, workingmu[currentRow]));
                 workingnu[currentCol] = workingnu[currentCol] - workingmu[currentRow];
                 workingmu[currentRow] = 0;
-                workingcost[currentRow] = numeric_limits<double>::infinity();
+                workingcost[currentRow] = _Inf_;
                 setCostToInf(bakcost, true, currentRow);
             }
         }
@@ -178,80 +174,83 @@ void updateuv() {
     }
 }
 
-int lastrow = 0;
-bool mostnegative(int& nr, int& nc) {
-    for (int _i = lastrow; _i < m+lastrow ; ++_i) {
-        int i = _i % m;
-        for (int j = 0; j < n; ++j) {
-            double tmp = cost[i][j] - u[i] - v[j];
-            if (tmp < -1e-15) {
-                nr = i;
-                nc = j;
-                lastrow = (_i+1)%m;
+bool isNegativeCost(int i, int j) {
+    return cost[i][j] - u[i] - v[j] < -1e-15;
+}
+
+int lastindex = 0;
+bool mostnegativeusingN(int& nr, int& nc) {
+    for (unsigned int __i = lastindex; __i < lastindex+x.size(); ++__i) {
+        int _i = __i % x.size();
+        corValPair* node = x[_i];
+        int p = node->p, q = node->q;
+        int s = p % res, t = p / res;
+        if (s > 0) {
+            if (isNegativeCost(p-1, q)) {
+                nr = p-1;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (t > 0) {
+            if (isNegativeCost(p-res, q)) {
+                nr = p-res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (s < res-1) {
+            if (isNegativeCost(p+1, q)) {
+                nr = p+1;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (t < res-1) {
+            if (isNegativeCost(p+res, q)) {
+                nr = p+res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (s > 0 && t > 0) {
+            if (isNegativeCost(p-1-res, q)) {
+                nr = p-1-res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (t > 0 && s < res-1) {
+            if (isNegativeCost(p+1-res, q)) {
+                nr = p+1-res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (s < res-1 && t < res-1) {
+            if (isNegativeCost(p+1+res, q)) {
+                nr = p+1+res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (t < res-1 && s > 0) {
+            if (isNegativeCost(p-1+res, q)) {
+                nr = p-1+res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
                 return true;
             }
         }
     }
     return false;
-}
-
-int lastrowS = 0;
-vector<vector<int>> shortList;
-
-void buildShortList() {
-    shortList.resize(m);
-    for (int i = 0; i < m; ++i) {
-        shortList[i].resize(__s__);
-        vector<bool> feasible(n, true);
-        for (int l = 0; l < __s__; ++l) {
-            int pos; double val = numeric_limits<double>::infinity();
-            for (int j = 0; j < n; ++j) {
-                if (cost[i][j] < val && feasible[j]) {
-                    pos = j;
-                    val = cost[i][j];
-                }
-            }
-            shortList[i][l] = pos;
-            feasible[pos] = false;
-        }
-    }
-}
-
-vector<tuple<int, int, double>> newlyList; // the last is alaways positive
-void mostnegativeShortCore() {
-    int rowN = __p__*m;
-    for (int _i = lastrowS; _i < rowN+lastrowS ; ++_i) {
-        int i = _i % m;
-        for (unsigned int _j = 0; _j < shortList[i].size(); ++_j) {
-            int j = shortList[i][_j];
-            double tmp = cost[i][j] - u[i] - v[j];
-            if (tmp < -1e-15) {
-                newlyList.push_back(make_tuple(i, j, -tmp));
-                if (newlyList.size() > __k__) {
-                    //printf("This time discovered %d items before iterating %f percent.\n", __k__, __p__);
-                    return;
-                }
-            }
-        }
-    }
-    return;
-}
-
-bool mostnegativeShort(int& nr, int& nc) {
-    newlyList.clear();
-    mostnegativeShortCore();
-    if (newlyList.size() > 0) {
-        double val = 0.0;
-        for (unsigned int l = 0; l < newlyList.size(); ++l) {
-            if (val < get<2>(newlyList[l])) {
-                nr = get<0>(newlyList[l]);
-                nc = get<1>(newlyList[l]);
-            }
-        }
-        return true;
-    } else {
-        return false;
-    }
 }
 
 double globalMin;
@@ -296,15 +295,7 @@ void core() {
     printf("%.4fs have been used on inital.\n", elapsed_secs);
     begin = clock();
 
-    buildShortList();
-
-    end = clock();
-    elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    printf("%.4fs have been used on build short list.\n", elapsed_secs);
-    begin = clock();
-
     int itr = 1;
-    bool shortSearch = true;
     while (true) {
         if (itr % 2000 == 0) {
             double sum = 0.0;
@@ -316,24 +307,14 @@ void core() {
         // update the multipliers
         updateuv();
         // returns false if all relative cost are non-negative
-        if (shortSearch) {
-            if (!mostnegativeShort(nr, nc)) {
-                shortSearch = false;
-                printf("Phase 3 ends at iteration %d.\n", itr);
-                if (!mostnegative(nr, nc)) {
-                    break;
-                }
-            }
-        } else {
-            if (!mostnegative(nr, nc)) {
-                break;
-            }
+        if (!mostnegativeusingN(nr, nc)) {
+            break;
         }
         corValPair* newNode = new corValPair(nr, nc, 0.0);
         addNode(newNode);
-        corValPair* dontForgetToDelete = new corValPair(nr, nc, numeric_limits<double>::infinity());
-        if (!happySearch(0, false, newNode, numeric_limits<double>::infinity(), dontForgetToDelete)) {
-            printf("CTransimplex:core\tLoop detection failed!\n");
+        corValPair* dontForgetToDelete = new corValPair(nr, nc, _Inf_);
+        if (!happySearch(0, false, newNode, _Inf_, dontForgetToDelete)) {
+            printf("Shielding:core\tLoop detection failed!\n");
             printx();
             return;
         }
@@ -345,12 +326,15 @@ void core() {
 
 int main() {
     clock_t begin = clock();
-    m = 64*64; n = 64*64;
+    res = 96;
+    m = res*res; n = res*res;
     cost = vector<vector<double>>(m);
     for (int i = 0; i < m; ++i) {
+        int ii = i%res, ij = i/res;
         cost[i].resize(n);
         for (int j = 0; j < n; ++j) {
-            cost[i][j] = (rand()+0.0) / RAND_MAX;
+            int ji = j%res, jj = j/res;
+            cost[i][j] = (ii-ji)*(ii-ji) + (ji-jj)*(ji-jj);
         }
     }
     mu = vector<double>(m);
@@ -375,12 +359,10 @@ int main() {
     }
 
     core();
-
     for (unsigned int i = 0; i < x.size(); ++i) {
         delete x[i];
     }
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    printf("%f\t%d\t%d\n", __p__, __k__, __s__);
     printf("%.4fs have been used in all.\n", elapsed_secs);
 }
