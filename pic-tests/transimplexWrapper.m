@@ -19,6 +19,9 @@ function [x, out, val] = transimplexWrapper(x0, C, mu, nu, opts)
         case 'shielding'
             mex CXXFLAGS='$CXXFLAGS -Wall -std=c++11 -O2' shielding.cpp
             [index, v] = shielding(x0, C, mu, nu, opts);
+        case 'multiscale'
+            mex CXXFLAGS='$CXXFLAGS -Wall -std=c++11 -O2' multiscale_matlab.cpp
+            [index, v] = multiscale(x0, C, mu, nu, opts);
     end
     X = sparse(double(index(1, :))+1, double(index(2, :))+1, v);
     x = reshape(X, m*n, 1);

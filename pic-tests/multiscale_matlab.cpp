@@ -1,3 +1,4 @@
+#include "mex.h"
 #include <stdio.h>
 #include <vector>
 #include <time.h>
@@ -374,7 +375,7 @@ vector<vector<vector<double>>> decomposeCost(const vector<vector<double>> &cost,
 }
 
 TransportPlan core(const vector<vector<double>> &X, const vector<vector<double>> &Y, const vector<vector<double>> &cost, int res) {
-    const int clusterSize = 2;
+    const int clusterSize = 4;
     DecompositionChain Xchain = DecompositionChain(X, res, clusterSize);
     DecompositionChain Ychain = DecompositionChain(Y, res, clusterSize);
 
@@ -401,75 +402,92 @@ TransportPlan core(const vector<vector<double>> &X, const vector<vector<double>>
         plan = plan.propagate();
         plan.refine();
     }
-    return plan;
+
+    return plan
 }
 
-int main() {
-    clock_t begin = clock();
-    int res = 64;
-    int m = res*res, n = res*res;
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
+    if (nrhs != 5) {
+        mexErrMsgIdAndTxt("CTransimplex:gateway:nrhs", "Need five inputs!");
+        return;
+    }
+    if (nlhs != 2) {
+        mexErrMsgIdAndTxt("CTransimplex:gateway:nlhs", "Need two outputs!");
+        return;
+    }
+    
+    // read in data
+    // cost matrix
+    double* costRe;
+    int m = mxGetM(prhs[1]);
+    int n = mxGetN(prhs[1]);
+    int res = sqrt(m);
+    if (m != res*res) {
+        mexErrMsgIdAndTxt("CTransimplex:gateway:res", "This solver can only deal with square inputs!");
+        return;
+    }
     vector<vector<double>> cost = vector<vector<double>>(m);
+    vector<double> costRe = mxGetPr(prhs[1]);
+    // mu
+    double* muRe = mxGetPr(prhs[2]);
+    if (m != mxGetM(prhs[2])) {
+        mexErrMsgIdAndTxt("CTransimplex:gateway:mu", "Mu dimension not match with cost matrix!");
+        return;
+    }
+    vector<double> mu = vector<double>(m);
+    // nu
+    double* nuRe = mxGetPr(prhs[3]);
+    if (n != mxGetM(prhs[3])) {
+        mexErrMsgIdAndTxt("CTransimplex:gateway:nu", "Nu dimension not match with cost matrix!");
+        return;
+    }
+    vector<double> nu = vector<double>(n);
+
     for (int i = 0; i < m; ++i) {
-        int ii = i%res, ij = i/res;
         cost[i].resize(n);
         for (int j = 0; j < n; ++j) {
-            int ji = j%res, jj = j/res;
-            cost[i][j] = (ii-ji)*(ii-ji) + (ij-jj)*(ij-jj);
+            cost[i][j] = costRe[m*j+i];
         }
     }
+    
+    for (int i = 0; i < m; ++i) {
+        mu[i] = muRe[i];
+    }
+    
+    for (int j = 0; j < n; ++j) {
+        nu[j] = nuRe[j];
+    }
+
     vector<vector<double>> X = vector<vector<double>>(res);
-    double Xsum = 0;
-    for (int i = 0; i < res; ++i) {
+    for (int i = 0; i < m; ++i) {
         X[i].resize(res);
-        for (int j = 0; j < res; ++j) {
-            X[i][j] = (rand()+0.0) / RAND_MAX;
-            Xsum += X[i][j];
+        for (int j = 0; j < n; ++j) {
+            X[i][j] = mu[res*j+i];
         }
     }
-    for (int i = 0; i < res; ++i) {
-        for (int j = 0; j < res; ++j) {
-            X[i][j] /= Xsum;
-        }
-    }
-    // fix numerical problem
-    Xsum = 0;
-    for (int i = 0; i < res; ++i) {
-        for (int j = 0; j < res; ++j) {
-            if (i==res-1 && j == res-1)
-                break;
-            Xsum += X[i][j];
-        }
-    }
-    X[res-1][res-1] = 1 - Xsum;
+
     vector<vector<double>> Y = vector<vector<double>>(res);
-    double Ysum = 0;
-    for (int i = 0; i < res; ++i) {
+    for (int i = 0; i < m; ++i) {
         Y[i].resize(res);
-        for (int j = 0; j < res; ++j) {
-            Y[i][j] = (rand()+0.0) / RAND_MAX;
-            Ysum += Y[i][j];
+        for (int j = 0; j < n; ++j) {
+            Y[i][j] = nu[res*j+i];
         }
     }
-    for (int i = 0; i < res; ++i) {
-        for (int j = 0; j < res; ++j) {
-            Y[i][j] /= Ysum;
-        }
-    }
-    // fix numerical problem
-    Ysum = 0;
-    for (int i = 0; i < res; ++i) {
-        for (int j = 0; j < res; ++j) {
-            if (i==res-1 && j == res-1)
-                break;
-            Ysum += Y[i][j];
-        }
-    }
-    Y[res-1][res-1] = 1 - Ysum;
 
-    core(X, Y, cost, res);
+    TransportPlan plan = core(X, Y, cost, res);
+    auto transports = plan.getTransports();
+    
+    plhs[0] = mxCreateNumericMatrix(2, transports.size(), mxINT32_CLASS, mxREAL);
+    int32_t* val1 = (int32_t*) mxGetData(plhs[0]);
+    for (unsigned int i = 0; i < transports.size(); ++i) {
+        val1[2*i] = transports[i]->x->getIndex();
+        val1[2*i+1] = transports[i]->y->getIndex();
+    }
+    plhs[1] = mxCreateDoubleMatrix(1, x.size(), mxREAL);
+    double* val2 = mxGetPr(plhs[1]);
+    for (unsigned int i = 0; i < transports.size(); ++i) {
+        val2[i] = transports[i]->amount;
+    }
 
-    clock_t end = clock();
-    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    printf("%.4fs have been used in all.\n", elapsed_secs);
-    return 0;
+    return;
 }
