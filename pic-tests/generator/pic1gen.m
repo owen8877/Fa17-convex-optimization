@@ -1,6 +1,6 @@
 resolutions = [8 16 24 32 64];
 m = numel(resolutions);
-k = 5; % pic numbers of one resolution
+k = 3; % pic numbers of one resolution
 
 pic = cell(m, k);
 for itr = 1:m
@@ -8,7 +8,8 @@ for itr = 1:m
     n = resolution^2;
     for l = 1:k
         mu = rand(n, 1);
-        mu = mu * n / sum(mu);
+        mu = mu / sum(mu);
+        mu(end) = 1 - sum(mu(1:n-1));
         pic{l, itr} = mu;
     end
 end

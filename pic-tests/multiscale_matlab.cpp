@@ -375,7 +375,7 @@ vector<vector<vector<double>>> decomposeCost(const vector<vector<double>> &cost,
 }
 
 TransportPlan core(const vector<vector<double>> &X, const vector<vector<double>> &Y, const vector<vector<double>> &cost, int res) {
-    const int clusterSize = 4;
+    const int clusterSize = 2;
     DecompositionChain Xchain = DecompositionChain(X, res, clusterSize);
     DecompositionChain Ychain = DecompositionChain(Y, res, clusterSize);
 
@@ -403,10 +403,11 @@ TransportPlan core(const vector<vector<double>> &X, const vector<vector<double>>
         plan.refine();
     }
 
-    return plan
+    return plan;
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
+    printf("================================\nStarting multiscale method.\n");
     if (nrhs != 5) {
         mexErrMsgIdAndTxt("CTransimplex:gateway:nrhs", "Need five inputs!");
         return;
@@ -418,7 +419,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     
     // read in data
     // cost matrix
-    double* costRe;
     int m = mxGetM(prhs[1]);
     int n = mxGetN(prhs[1]);
     int res = sqrt(m);
@@ -427,7 +427,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         return;
     }
     vector<vector<double>> cost = vector<vector<double>>(m);
-    vector<double> costRe = mxGetPr(prhs[1]);
+    double* costRe = mxGetPr(prhs[1]);
     // mu
     double* muRe = mxGetPr(prhs[2]);
     if (m != mxGetM(prhs[2])) {
@@ -459,17 +459,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     }
 
     vector<vector<double>> X = vector<vector<double>>(res);
-    for (int i = 0; i < m; ++i) {
+    for (int i = 0; i < res; ++i) {
         X[i].resize(res);
-        for (int j = 0; j < n; ++j) {
+        for (int j = 0; j < res; ++j) {
             X[i][j] = mu[res*j+i];
         }
     }
 
     vector<vector<double>> Y = vector<vector<double>>(res);
-    for (int i = 0; i < m; ++i) {
+    for (int i = 0; i < res; ++i) {
         Y[i].resize(res);
-        for (int j = 0; j < n; ++j) {
+        for (int j = 0; j < res; ++j) {
             Y[i][j] = nu[res*j+i];
         }
     }
@@ -480,13 +480,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     plhs[0] = mxCreateNumericMatrix(2, transports.size(), mxINT32_CLASS, mxREAL);
     int32_t* val1 = (int32_t*) mxGetData(plhs[0]);
     for (unsigned int i = 0; i < transports.size(); ++i) {
-        val1[2*i] = transports[i]->x->getIndex();
-        val1[2*i+1] = transports[i]->y->getIndex();
+        val1[2*i] = transports[i].x->getIndex();
+        val1[2*i+1] = transports[i].y->getIndex();
     }
-    plhs[1] = mxCreateDoubleMatrix(1, x.size(), mxREAL);
+    plhs[1] = mxCreateDoubleMatrix(1, transports.size(), mxREAL);
     double* val2 = mxGetPr(plhs[1]);
     for (unsigned int i = 0; i < transports.size(); ++i) {
-        val2[i] = transports[i]->amount;
+        val2[i] = transports[i].amount;
     }
 
     return;

@@ -155,7 +155,7 @@ void core() {
             for (unsigned int i = 0; i < x.size(); ++i) {
                 sum += x[i]->val * cost[x[i]->p][x[i]->q];
             }
-            printf("Iteration %d\t%e\t%d\n", itr, sum, x.size());
+            printf("Iteration %d\t%e\n", itr, sum);
         }
         // update the multipliers
         updateuv();
