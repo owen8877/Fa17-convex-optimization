@@ -163,7 +163,7 @@ ADMM 效果并不佳；以下是 $m=n=64$ 的测试结果：
 
 根据单纯性法，由于我们有 $m+n-1$ 个约束条件，所以其实只有 $m+n-1$ 个变量是自有变量，剩下的都是约束变量。根据单纯性法，如果选择 $x_{k_1}, \dots x_{k_{m+n-1}}$ 作为自由变量能使得目标函数是它们的非正线性组合，我们就达到了最优解。
 
-由于只有自由变量能够取零，因此一个自然的想法是我们挑选每行/列代价最大的变量作为自由变量，并且尽可能满足这个变量的传输直至这一行或列的总和用尽；这就是最小费用法则（Least Cost Rule）：
+由于只有自由变量能够取零，因此一个自然的想法是我们挑选每行/列代价最小的变量作为自由变量，并且尽可能满足这个变量的传输直至这一行或列的总和用尽；这就是最小费用法则（Least Cost Rule）：
 $$
 \begin{align}
 & searchOnRow \leftarrow true \\
@@ -171,14 +171,14 @@ $$
 & column \leftarrow 1 \\
 & \textbf{for} \quad i=1:(m+n-1) \\
 & \qquad \textbf{if} \quad searchOnRow \\
-& \qquad \qquad column \leftarrow \textbf{argmax}_l \quad c_{row, l} \\
+& \qquad \qquad column \leftarrow \textbf{argmin}_l \quad c_{row, l} \\
 & \qquad \qquad \textbf{if} \quad \mu_{row, column} \ge \nu_{row, column} \\
 & \qquad \qquad \qquad \mu_{row, column} \leftarrow \mu_{row, column} - \nu_{row, column} \\
 & \qquad \qquad \textbf{else} \\
 & \qquad \qquad \qquad \nu_{row, column} \leftarrow \nu_{row, column} - \mu_{row, column} \\
 & \qquad \qquad \qquad searchOnRow \leftarrow false \\
 & \qquad \textbf{else} \\
-& \qquad \qquad row \leftarrow \textbf{argmax}_l \quad c_{l, column} \\
+& \qquad \qquad row \leftarrow \textbf{argmin}_l \quad c_{l, column} \\
 & \qquad \qquad \textbf{if} \quad \nu_{row, column} \ge \mu_{row, column} \\
 & \qquad \qquad \qquad \nu_{row, column} \leftarrow \nu_{row, column} - \mu_{row, column} \\
 & \qquad \qquad \textbf{else} \\
@@ -230,6 +230,8 @@ $$
 \exists x^* \in \Lambda_x \quad \textbf{s.t.} \quad Cost(\tilde{x}, x) > Cost(\tilde{x}, x^*) + Cost(x^*, x)
 $$
 那么我们只需要每次检验邻居的相对费用是不是负的就可以了。在最简单的 $p=2$ 情形（即 $Cost(x, y) = ||x-y||^p$）下， $\Lambda_x$ 就是 $x$ 周围的八个邻居。（有没有理论保证收敛速度来着？）
+
+详见 `shielding.cpp` 。
 
 ### AHA Method
 
