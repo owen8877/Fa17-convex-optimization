@@ -187,7 +187,7 @@ vector<tuple<int, int, double>> wrapper(const vector<vector<double>> &_cost, con
     nu = YM;
     v = vector<double>(n);
     cost = _cost;
-    printf("(%d, %d)\n", m, n);
+    // printf("(%d, %d)\n", m, n);
 
     nr = 0; nc = 0;
 

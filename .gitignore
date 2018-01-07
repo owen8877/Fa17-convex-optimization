@@ -2,3 +2,6 @@
 *.mexa64
 *.o
 *.mat
+*.log
+*.net
+.Rhistory

@@ -47,13 +47,13 @@ public:
     }
 
     void print() {
-        printf("DataNode %d, ", this);
+        printf("DataNode %p, ", this);
         if (children.size() == 0) {
             printf("leaf with measure %f.\n", measure);
         } else {
             printf("internode with measure %f.\n\tChildren: ", measure);
             for (unsigned int i = 0; i < children.size(); ++i) {
-                printf("%d ,", children[i]);
+                printf("%p ,", children[i]);
             }
             printf("\n");
         }
@@ -83,7 +83,7 @@ public:
     }
 
     void print() {
-        printf("Level %d decomposition, with %d partition(s).\n", level, partition.size());
+        printf("Level %d decomposition, with %zd partition(s).\n", level, partition.size());
         for (unsigned int i = 0; i < partition.size(); ++i) {
             partition[i]->print();
         }
@@ -151,7 +151,7 @@ public:
     }
 
     void print() {
-        printf("%d decomposition in chains:\n", chain.size());
+        printf("%zd decomposition in chains:\n", chain.size());
         for (unsigned int i = 0; i < chain.size(); ++i) {
             chain[i].print();
         }
@@ -186,17 +186,6 @@ private:
         level = _level;
     }
 
-    void prune() {
-        printf("Pruning...\n");
-        int XVarNum = X->getDecompositions()[level].getDataNodes().size(),
-            YVarNum = Y->getDecompositions()[level].getDataNodes().size();
-        if (XVarNum + YVarNum == transports.size() + 1) {
-            printf("No need for pruning.\n");
-        } else {
-            printf("Working hard to prune %d transports...\n", transports.size());
-        }
-    }
-
     static auto search(const vector<vector<double>>& c, auto xIter, const vector<DataNode*>& yChildren) {
         int xIndex = (*xIter)->getIndex();
         double minimum = __Inf__;
@@ -212,11 +201,11 @@ private:
 
     static void setToInf(vector<vector<double>>& c, bool opOnX, int index) {
         if (opOnX) {
-            for (auto i = 0; i < c[index].size(); ++i) {
+            for (unsigned int i = 0; i < c[index].size(); ++i) {
                 c[index][i] = __Inf__;
             }
         } else {
-            for (auto i = 0; i < c.size(); ++i) {
+            for (unsigned int i = 0; i < c.size(); ++i) {
                 c[i][index] = __Inf__;
             }
         }
@@ -255,17 +244,13 @@ public:
             auto xCoarseNode = iterator->x, yCoraseNode = iterator->y;
             double tmpAmount = iterator->amount;
             auto xCoarseNodeChildIter = xCoarseNode->getChildren().begin();
-            //int count = 0;
             while (true) {
-                int __i = (*xCoarseNodeChildIter)->getIndex();
-                // while (tmpXMeasure[(*xCoarseNodeChildIter)->getIndex()] < __EPS__) {
-                while (tmpXMeasure[__i] < __EPS__) {
+                while (tmpXMeasure[(*xCoarseNodeChildIter)->getIndex()] < __EPS__) {
                     ++xCoarseNodeChildIter;
                     if (xCoarseNodeChildIter == xCoarseNode->getChildren().end()) {
                         printf("Error!!!!");
                         throw exception();
                     }
-                    __i = (*xCoarseNodeChildIter)->getIndex();
                 }
                 // now the iterator points to a positive measure dataNode
                 double xm = tmpXMeasure[(*xCoarseNodeChildIter)->getIndex()];
@@ -325,7 +310,7 @@ public:
         // transports = vector<Transport>(interact.size());
         auto XdataNodes = X->getDecompositions()[level].getDataNodes(),
             YdataNodes = Y->getDecompositions()[level].getDataNodes();
-        for (auto i = 0; i < interact.size(); ++i) {
+        for (unsigned int i = 0; i < interact.size(); ++i) {
             transports[i] = Transport(XdataNodes[get<0>(interact[i])], YdataNodes[get<1>(interact[i])], get<2>(interact[i]));
         }
     }
@@ -355,10 +340,10 @@ vector<vector<vector<double>>> decomposeCost(const vector<vector<double>> &cost,
         auto xDecompNodes = Xchain.getDecompositions()[l].getDataNodes(),
             yDecompNodes = Ychain.getDecompositions()[l].getDataNodes();
         costChain[l].resize(xDecompNodes.size());
-        for (auto i = 0; i < xDecompNodes.size(); ++i) {
+        for (unsigned int i = 0; i < xDecompNodes.size(); ++i) {
             auto xNodeChildren = xDecompNodes[i]->getChildren();
             costChain[l][i].resize(yDecompNodes.size());
-            for (auto j = 0; j < yDecompNodes.size(); ++j) {
+            for (unsigned int j = 0; j < yDecompNodes.size(); ++j) {
                 auto yNodeChildren = yDecompNodes[j]->getChildren();
                 double costSum = 0;
                 for (auto xiter = xNodeChildren.begin(); xiter != xNodeChildren.end(); ++xiter) {
@@ -375,34 +360,23 @@ vector<vector<vector<double>>> decomposeCost(const vector<vector<double>> &cost,
 }
 
 TransportPlan core(const vector<vector<double>> &X, const vector<vector<double>> &Y, const vector<vector<double>> &cost, int res) {
+    clock_t begin = clock();
     const int clusterSize = 2;
     DecompositionChain Xchain = DecompositionChain(X, res, clusterSize);
     DecompositionChain Ychain = DecompositionChain(Y, res, clusterSize);
 
     vector<vector<vector<double>>> costChain = decomposeCost(cost, Xchain, Ychain);
-
-    // for (auto i = 0; i < 2; ++i) {
-    //     printf("Level %d cost matrix.\n", i);
-    //     for (auto k = 0; k < costChain[i].size(); ++k) {
-    //         for (auto j = 0; j < costChain[i][k].size(); ++j) {
-    //             printf("% 8.4f ", costChain[i][k][j]);
-    //         }
-    //         printf("% 8.4f\n", Xchain.getDecompositions()[i].getDataNodes()[k]->getMeasure());
-    //     }
-    //     for (auto j = 0; j < costChain[i].size(); ++j) {
-    //         printf("% 8.4f ", Ychain.getDecompositions()[i].getDataNodes()[j]->getMeasure());
-    //     }
-    //     printf("\n");
-    // }
+    printf("Decomposition completed in %.4fs.\n", double(clock() - begin) / CLOCKS_PER_SEC);
 
     TransportPlan plan(&costChain, &Xchain, &Ychain);
 
-    for (int i = 0; i < Xchain.getDecompositions().size()-1; ++i) {
-        plan.print();
+    clock_t last = clock();
+    for (unsigned i = 0; i < Xchain.getDecompositions().size()-1; ++i) {
         plan = plan.propagate();
         plan.refine();
+        printf("Level %d completed in %.4fs (total %.4fs).\n", i+1, double(clock() - last) / CLOCKS_PER_SEC, double(clock() - begin) / CLOCKS_PER_SEC);
+        last = clock();
     }
-
     return plan;
 }
 
