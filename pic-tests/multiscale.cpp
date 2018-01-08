@@ -91,6 +91,13 @@ public:
     const vector<DataNode*>& getDataNodes() const {
         return partition;
     }
+
+    void invalidate() {
+        for (auto iter = partition.begin(); iter != partition.end(); ++iter) {
+            delete *iter;
+            *iter = nullptr;
+        }
+    }
 };
 
 class DecompositionChain {
@@ -146,6 +153,12 @@ public:
         std::reverse(chain.begin(), chain.end());
         for (unsigned int i = 0; i < chain.size(); ++i) {
             chain[i].assignLevel(i);
+        }
+    }
+
+    void invalidate() {
+        for (auto iter = chain.begin(); iter != chain.end(); ++iter) {
+            iter->invalidate();
         }
     }
 
@@ -327,6 +340,11 @@ public:
     const vector<Transport>& getTransports() const {
         return transports;
     }
+
+    void invalidate() {
+        X->invalidate();
+        Y->invalidate();
+    }
 };
 
 vector<vector<vector<double>>> decomposeCost(const vector<vector<double>> &cost, const DecompositionChain &Xchain, const DecompositionChain &Ychain) {
@@ -358,7 +376,7 @@ vector<vector<vector<double>>> decomposeCost(const vector<vector<double>> &cost,
     return costChain;
 }
 
-TransportPlan core(const vector<vector<double>> &X, const vector<vector<double>> &Y, const vector<vector<double>> &cost, int res) {
+void core(const vector<vector<double>> &X, const vector<vector<double>> &Y, const vector<vector<double>> &cost, int res) {
     clock_t begin = clock();
     const int clusterSize = 2;
     DecompositionChain Xchain = DecompositionChain(X, res, clusterSize);
@@ -376,12 +394,13 @@ TransportPlan core(const vector<vector<double>> &X, const vector<vector<double>>
         printf("Level %d completed in %.4fs (total %.4fs).\n", i+1, double(clock() - last) / CLOCKS_PER_SEC, double(clock() - begin) / CLOCKS_PER_SEC);
         last = clock();
     }
-    return plan;
+    plan.invalidate();
+    return;
 }
 
 int main() {
     clock_t begin = clock();
-    int res = 96;
+    int res = 64;
     int m = res*res, n = res*res;
     vector<vector<double>> cost = vector<vector<double>>(m);
     for (int i = 0; i < m; ++i) {

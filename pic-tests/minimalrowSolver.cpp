@@ -22,6 +22,7 @@ public:
 vector<corValPair*> x;
 int m, n;
 vector<vector<double>> cost;
+vector<vector<bool>> isBasis;
 vector<double> mu, u;
 vector<double> nu, v;
 int nr, nc;
@@ -38,6 +39,7 @@ void addNode(corValPair* node) {
         }
     }
     x.push_back(node);
+    isBasis[node->p][node->q] = true;
 }
 
 void rmNode(corValPair* node) {
@@ -50,6 +52,7 @@ void rmNode(corValPair* node) {
         neighbour->hNeighbours.erase(remove(neighbour->hNeighbours.begin(), neighbour->hNeighbours.end(), node), neighbour->hNeighbours.end());
     }
     x.erase(remove(x.begin(), x.end(), node), x.end());
+    isBasis[node->p][node->q] = false;
     delete node;
 }
 
@@ -82,6 +85,9 @@ bool mostnegative(int& nr, int& nc) {
     for (int _i = lastrow; _i < m+lastrow ; ++_i) {
         int i = _i % m;
         for (int j = 0; j < n; ++j) {
+            if (isBasis[i][j]) {
+                continue;
+            }
             double tmp = cost[i][j] - u[i] - v[j];
             if (tmp < -1e-10) {
                 nr = i;
@@ -168,7 +174,7 @@ void core() {
         corValPair* dontForgetToDelete = new corValPair(nr, nc, _Inf_);
         if (!happySearch(0, false, newNode, _Inf_, dontForgetToDelete)) {
             printf("CTransimplex:core\tLoop detection failed!\n");
-            printx();
+            // printx();
             return;
         }
         delete dontForgetToDelete;
@@ -187,7 +193,11 @@ vector<tuple<int, int, double>> wrapper(const vector<vector<double>> &_cost, con
     nu = YM;
     v = vector<double>(n);
     cost = _cost;
-    // printf("(%d, %d)\n", m, n);
+    isBasis.resize(m);
+    for (int i = 0; i < m; ++i) {
+        isBasis[i] = vector<bool>(n, false);
+    }
+    printf("(%d, %d, %zd)\n", m, n, x0.size());
 
     nr = 0; nc = 0;
 
@@ -204,5 +214,9 @@ vector<tuple<int, int, double>> wrapper(const vector<vector<double>> &_cost, con
     }
     x.clear();
     x.resize(0);
+    cost.clear();
+    cost.resize(0);
+    isBasis.clear();
+    isBasis.resize(0);
     return r;
 }

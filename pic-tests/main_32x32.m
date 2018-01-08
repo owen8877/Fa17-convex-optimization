@@ -3,7 +3,7 @@
 clc; clear
 
 % cost matrix
-testResolution = 5;
+testResolution = 3;
 costData = load('data/cost.mat');
 C = costData.data{testResolution};
 errfun = @(x1, x2) norm(x1-x2)/(1+norm(x1));
@@ -11,13 +11,13 @@ draw = false;
 R = cell(10, 1);
 
 %% test query
-testRange = 1:1;
+testRange = 1:10;
 query = {...
 %     {@dir_mosek, 'mosek', struct('method', 'simplex')}; ...
 %     {@dir_cplex, 'cplex_lp', []}; ...
     {@transimplexWrapper, 'cplex_net', struct('method', 'cplex')}; ...
 %     {@transimplexWrapper, 'normal', struct('method', 'normal')}; ...
-%     {@transimplexWrapper, 'improved', struct('method', 'improved')}; ...
+    {@transimplexWrapper, 'improved', struct('method', 'improved')}; ...
     {@transimplexWrapper, 'shielding', struct('method', 'shielding')}; ...
 %     {@transimplexWrapper, 'shortlist', struct('method', 'shortlist')}; ...
     {@transimplexWrapper, 'multiscale', struct('method', 'multiscale')}; ...
@@ -27,7 +27,7 @@ caseN = size(query, 1);
 for testCase = testRange
     picData = load(['data/pic', int2str(testCase), '.mat']);
     k_ = picData.picN;
-    k = min(4, k_); % real test pic numbers
+    k = min(5, k_); % real test pic numbers
     fprintf('Resolution %dx%d\n', picData.resolutions(testResolution), picData.resolutions(testResolution));
 
     results = cell(k*(k-1)/2, caseN);

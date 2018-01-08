@@ -14,6 +14,8 @@ using namespace std;
 #define __EPS__ 1e-13
 #define __Inf__ numeric_limits<double>::infinity()
 
+int unbelievable = 10000;
+
 class DataNode {
 private:
     double measure;
@@ -36,6 +38,9 @@ public:
         }
         center = make_tuple(xsum/children.size(), ysum/children.size());
         index = _index;
+        if (_index > unbelievable) {
+            throw exception();
+        }
     }
 
     double getMeasure() const {
@@ -92,6 +97,13 @@ public:
     const vector<DataNode*>& getDataNodes() const {
         return partition;
     }
+
+    void invalidate() {
+        for (auto iter = partition.begin(); iter != partition.end(); ++iter) {
+            delete *iter;
+            *iter = nullptr;
+        }
+    }
 };
 
 class DecompositionChain {
@@ -147,6 +159,12 @@ public:
         std::reverse(chain.begin(), chain.end());
         for (unsigned int i = 0; i < chain.size(); ++i) {
             chain[i].assignLevel(i);
+        }
+    }
+
+    void invalidate() {
+        for (auto iter = chain.begin(); iter != chain.end(); ++iter) {
+            iter->invalidate();
         }
     }
 
@@ -328,6 +346,11 @@ public:
     const vector<Transport>& getTransports() const {
         return transports;
     }
+
+    void invalidate() {
+        X->invalidate();
+        Y->invalidate();
+    }
 };
 
 vector<vector<vector<double>>> decomposeCost(const vector<vector<double>> &cost, const DecompositionChain &Xchain, const DecompositionChain &Ychain) {
@@ -359,7 +382,7 @@ vector<vector<vector<double>>> decomposeCost(const vector<vector<double>> &cost,
     return costChain;
 }
 
-TransportPlan core(const vector<vector<double>> &X, const vector<vector<double>> &Y, const vector<vector<double>> &cost, int res) {
+vector<tuple<int, int, double>> core(const vector<vector<double>> &X, const vector<vector<double>> &Y, const vector<vector<double>> &cost, int res) {
     clock_t begin = clock();
     const int clusterSize = 2;
     DecompositionChain Xchain = DecompositionChain(X, res, clusterSize);
@@ -377,7 +400,14 @@ TransportPlan core(const vector<vector<double>> &X, const vector<vector<double>>
         printf("Level %d completed in %.4fs (total %.4fs).\n", i+1, double(clock() - last) / CLOCKS_PER_SEC, double(clock() - begin) / CLOCKS_PER_SEC);
         last = clock();
     }
-    return plan;
+    vector<tuple<int, int, double>> result;
+    auto transports = plan.getTransports();
+    result.reserve(transports.size());
+    for (unsigned int i = 0; i < transports.size(); ++i) {
+        result.push_back(make_tuple(transports[i].x->getIndex(), transports[i].y->getIndex(), transports[i].amount));
+    }
+    plan.invalidate();
+    return result;
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
@@ -395,6 +425,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // cost matrix
     int m = mxGetM(prhs[1]);
     int n = mxGetN(prhs[1]);
+    unbelievable = m;
     int res = sqrt(m);
     if (m != res*res) {
         mexErrMsgIdAndTxt("CTransimplex:gateway:res", "This solver can only deal with square inputs!");
@@ -448,19 +479,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         }
     }
 
-    TransportPlan plan = core(X, Y, cost, res);
-    auto transports = plan.getTransports();
+    auto result = core(X, Y, cost, res);
     
-    plhs[0] = mxCreateNumericMatrix(2, transports.size(), mxINT32_CLASS, mxREAL);
+    plhs[0] = mxCreateNumericMatrix(2, result.size(), mxINT32_CLASS, mxREAL);
     int32_t* val1 = (int32_t*) mxGetData(plhs[0]);
-    for (unsigned int i = 0; i < transports.size(); ++i) {
-        val1[2*i] = transports[i].x->getIndex();
-        val1[2*i+1] = transports[i].y->getIndex();
+    for (unsigned int i = 0; i < result.size(); ++i) {
+        val1[2*i] = get<0>(result[i]);
+        val1[2*i+1] = get<1>(result[i]);
     }
-    plhs[1] = mxCreateDoubleMatrix(1, transports.size(), mxREAL);
+    plhs[1] = mxCreateDoubleMatrix(1, result.size(), mxREAL);
     double* val2 = mxGetPr(plhs[1]);
-    for (unsigned int i = 0; i < transports.size(); ++i) {
-        val2[i] = transports[i].amount;
+    for (unsigned int i = 0; i < result.size(); ++i) {
+        val2[i] = get<2>(result[i]);
     }
 
     return;

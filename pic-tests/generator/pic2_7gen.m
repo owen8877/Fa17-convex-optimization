@@ -16,6 +16,8 @@ function pic2_7gen(resolutions, k, fix_end, source, dest)
         n = resolution^2;
         for l = 1:k
             mu = tmp((l-1)*resolution+1:l*resolution, :);
+            mu = mu + 1e-10;
+            mu = mu / sum(sum(mu));
             fprintf('Checking...Sum is %f.\n', sum(sum(mu)));
             pic{l, itr} = fix_end(reshape(mu, n, 1));
         end
