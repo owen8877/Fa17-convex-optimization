@@ -7,6 +7,7 @@
 #include <tuple>
 #include <exception>
 #include "minimalrowSolver.cpp"
+#include "shieldingSolver.cpp"
 
 using namespace std;
 
@@ -318,7 +319,7 @@ public:
         for (auto itr = transports.begin(); itr != transports.end(); ++itr) {
             interact.push_back(make_tuple(itr->x->getIndex(), itr->y->getIndex(), itr->amount));
         }
-        interact = wrapper((*costChain)[level], tmpXMeasure, tmpYMeasure, interact);
+        interact = shield::wrapper_s((*costChain)[level], tmpXMeasure, tmpYMeasure, interact);
         // transports = vector<Transport>(interact.size());
         auto XdataNodes = X->getDecompositions()[level].getDataNodes(),
             YdataNodes = Y->getDecompositions()[level].getDataNodes();
@@ -400,7 +401,7 @@ void core(const vector<vector<double>> &X, const vector<vector<double>> &Y, cons
 
 int main() {
     clock_t begin = clock();
-    int res = 64;
+    int res = 96;
     int m = res*res, n = res*res;
     vector<vector<double>> cost = vector<vector<double>>(m);
     for (int i = 0; i < m; ++i) {

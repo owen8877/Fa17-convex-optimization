@@ -8,6 +8,7 @@
 #include <tuple>
 #include <exception>
 #include "minimalrowSolver.cpp"
+#include "shieldingSolver.cpp"
 
 using namespace std;
 
@@ -15,6 +16,7 @@ using namespace std;
 #define __Inf__ numeric_limits<double>::infinity()
 
 int unbelievable = 10000;
+bool useShield;
 
 class DataNode {
 private:
@@ -324,7 +326,11 @@ public:
         for (auto itr = transports.begin(); itr != transports.end(); ++itr) {
             interact.push_back(make_tuple(itr->x->getIndex(), itr->y->getIndex(), itr->amount));
         }
-        interact = wrapper((*costChain)[level], tmpXMeasure, tmpYMeasure, interact);
+        if (useShield) {
+            interact = shield::wrapper_s((*costChain)[level], tmpXMeasure, tmpYMeasure, interact);
+        } else {
+            interact = wrapper((*costChain)[level], tmpXMeasure, tmpYMeasure, interact);
+        }
         // transports = vector<Transport>(interact.size());
         auto XdataNodes = X->getDecompositions()[level].getDataNodes(),
             YdataNodes = Y->getDecompositions()[level].getDataNodes();
@@ -446,6 +452,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         mexErrMsgIdAndTxt("CTransimplex:gateway:nu", "Nu dimension not match with cost matrix!");
         return;
     }
+
+    bool* logicals = mxGetLogicals(prhs[4]);
+    useShield = logicals[0];
+
+    printf("%s shielding.\n", useShield ? "Using" : "Not using");
+
     vector<double> nu = vector<double>(n);
 
     for (int i = 0; i < m; ++i) {

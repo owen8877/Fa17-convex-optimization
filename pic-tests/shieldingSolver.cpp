@@ -10,6 +10,8 @@
 
 using namespace std;
 
+namespace shield {
+
 class corValPair {
 public:
     int p, q; double val;
@@ -20,7 +22,7 @@ public:
 };
 
 vector<corValPair*> x;
-int m, n;
+int m, n, res;
 vector<vector<double>> cost;
 vector<vector<bool>> isBasis;
 vector<double> mu, u;
@@ -79,28 +81,83 @@ void updateuv() {
     }
 }
 
-int lastrow = 0;
-bool mostnegative(int& nr, int& nc) {
-    bool found = false;
-    for (int _i = lastrow; _i < m+lastrow ; ++_i) {
-        int i = _i % m;
-        for (int j = 0; j < n; ++j) {
-            if (isBasis[i][j]) {
-                continue;
-            }
-            double tmp = cost[i][j] - u[i] - v[j];
-            if (tmp < -1e-10) {
-                nr = i;
-                nc = j;
-                found = true;
+bool isNegativeCost(int i, int j) {
+    return cost[i][j] - u[i] - v[j] < -1e-10;
+}
+
+int lastindex = 0;
+bool mostnegativeusingN(int& nr, int& nc) {
+    for (unsigned int __i = lastindex; __i < lastindex+x.size(); ++__i) {
+        int _i = __i % x.size();
+        corValPair* node = x[_i];
+        int p = node->p, q = node->q;
+        int s = p % res, t = p / res;
+        if (s > 0) {
+            if (isNegativeCost(p-1, q)) {
+                nr = p-1;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
             }
         }
-        if (found) {
-            lastrow = (_i+1)%m;
-            break;
+        if (t > 0) {
+            if (isNegativeCost(p-res, q)) {
+                nr = p-res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (s < res-1) {
+            if (isNegativeCost(p+1, q)) {
+                nr = p+1;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (t < res-1) {
+            if (isNegativeCost(p+res, q)) {
+                nr = p+res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (s > 0 && t > 0) {
+            if (isNegativeCost(p-1-res, q)) {
+                nr = p-1-res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (t > 0 && s < res-1) {
+            if (isNegativeCost(p+1-res, q)) {
+                nr = p+1-res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (s < res-1 && t < res-1) {
+            if (isNegativeCost(p+1+res, q)) {
+                nr = p+1+res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
+        }
+        if (t < res-1 && s > 0) {
+            if (isNegativeCost(p-1+res, q)) {
+                nr = p-1+res;
+                nc = q;
+                lastindex = (__i+1) % x.size();
+                return true;
+            }
         }
     }
-    return found;
+    return false;
 }
 
 double globalMin;
@@ -166,7 +223,7 @@ void core() {
         // update the multipliers
         updateuv();
         // returns false if all relative cost are non-negative
-        if (!mostnegative(nr, nc)) {
+        if (!mostnegativeusingN(nr, nc)) {
             break;
         }
         corValPair* newNode = new corValPair(nr, nc, 0.0);
@@ -186,8 +243,9 @@ void core() {
     printf("%d iterations in all.\n", itr);
 }
 
-vector<tuple<int, int, double>> wrapper(const vector<vector<double>> &_cost, const vector<double> &XM, const vector<double> &YM, const vector<tuple<int, int, double>>& x0) {
+vector<tuple<int, int, double>> wrapper_s(const vector<vector<double>> &_cost, const vector<double> &XM, const vector<double> &YM, const vector<tuple<int, int, double>>& x0) {
     m = XM.size();
+    res = sqrt(m);
     n = YM.size();
     mu = XM;
     u = vector<double>(m);
@@ -221,3 +279,5 @@ vector<tuple<int, int, double>> wrapper(const vector<vector<double>> &_cost, con
     isBasis.resize(0);
     return r;
 }
+
+};
