@@ -401,7 +401,7 @@ void core(const vector<vector<double>> &X, const vector<vector<double>> &Y, cons
 
 int main() {
     clock_t begin = clock();
-    int res = 96;
+    int res = 32;
     int m = res*res, n = res*res;
     vector<vector<double>> cost = vector<vector<double>>(m);
     for (int i = 0; i < m; ++i) {
@@ -421,7 +421,6 @@ int main() {
             Xsum += X[i][j];
         }
     }
-    Xsum /= 2;
     for (int i = 0; i < res; ++i) {
         for (int j = 0; j < res; ++j) {
             X[i][j] /= Xsum;
@@ -436,7 +435,7 @@ int main() {
             Xsum += X[i][j];
         }
     }
-    X[res-1][res-1] = 2 - Xsum;
+    X[res-1][res-1] = 1 - Xsum;
     vector<vector<double>> Y = vector<vector<double>>(res);
     double Ysum = 0;
     for (int i = 0; i < res; ++i) {
@@ -446,7 +445,6 @@ int main() {
             Ysum += Y[i][j];
         }
     }
-    Ysum /= 2;
     for (int i = 0; i < res; ++i) {
         for (int j = 0; j < res; ++j) {
             Y[i][j] /= Ysum;
@@ -461,7 +459,7 @@ int main() {
             Ysum += Y[i][j];
         }
     }
-    Y[res-1][res-1] = 2 - Ysum;
+    Y[res-1][res-1] = 1 - Ysum;
 
     core(X, Y, cost, res);
 
