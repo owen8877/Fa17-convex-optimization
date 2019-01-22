@@ -22,7 +22,7 @@ public:
 };
 
 vector<corValPair*> x;
-int m, n, res;
+int m, n, height, width;
 vector<vector<double>> cost;
 vector<double> mu, u;
 vector<double> nu, v;
@@ -186,7 +186,7 @@ bool mostnegativeusingN(int& nr, int& nc) {
         int _i = __i % x.size();
         corValPair* node = x[_i];
         int p = node->p, q = node->q;
-        int s = p % res, t = p / res;
+        int s = p % height, t = p / height;
         if (s > 0) {
             if (isNegativeCost(p-1, q)) {
                 nr = p-1;
@@ -196,14 +196,14 @@ bool mostnegativeusingN(int& nr, int& nc) {
             }
         }
         if (t > 0) {
-            if (isNegativeCost(p-res, q)) {
-                nr = p-res;
+            if (isNegativeCost(p-height, q)) {
+                nr = p-height;
                 nc = q;
                 lastindex = (__i+1) % x.size();
                 return true;
             }
         }
-        if (s < res-1) {
+        if (s < height-1) {
             if (isNegativeCost(p+1, q)) {
                 nr = p+1;
                 nc = q;
@@ -211,41 +211,41 @@ bool mostnegativeusingN(int& nr, int& nc) {
                 return true;
             }
         }
-        if (t < res-1) {
-            if (isNegativeCost(p+res, q)) {
-                nr = p+res;
+        if (t < width-1) {
+            if (isNegativeCost(p+height, q)) {
+                nr = p+height;
                 nc = q;
                 lastindex = (__i+1) % x.size();
                 return true;
             }
         }
         if (s > 0 && t > 0) {
-            if (isNegativeCost(p-1-res, q)) {
-                nr = p-1-res;
+            if (isNegativeCost(p-1-height, q)) {
+                nr = p-1-height;
                 nc = q;
                 lastindex = (__i+1) % x.size();
                 return true;
             }
         }
-        if (t > 0 && s < res-1) {
-            if (isNegativeCost(p+1-res, q)) {
-                nr = p+1-res;
+        if (t > 0 && s < height-1) {
+            if (isNegativeCost(p+1-height, q)) {
+                nr = p+1-height;
                 nc = q;
                 lastindex = (__i+1) % x.size();
                 return true;
             }
         }
-        if (s < res-1 && t < res-1) {
-            if (isNegativeCost(p+1+res, q)) {
-                nr = p+1+res;
+        if (s < height-1 && t < width-1) {
+            if (isNegativeCost(p+1+height, q)) {
+                nr = p+1+height;
                 nc = q;
                 lastindex = (__i+1) % x.size();
                 return true;
             }
         }
-        if (t < res-1 && s > 0) {
-            if (isNegativeCost(p-1+res, q)) {
-                nr = p-1+res;
+        if (t < width-1 && s > 0) {
+            if (isNegativeCost(p-1+height, q)) {
+                nr = p-1+height;
                 nc = q;
                 lastindex = (__i+1) % x.size();
                 return true;
@@ -333,8 +333,8 @@ void core() {
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-    if (nrhs != 5) {
-        mexErrMsgIdAndTxt("Shielding:gateway:nrhs", "Need five inputs!");
+    if (nrhs != 6) {
+        mexErrMsgIdAndTxt("Shielding:gateway:nrhs", "Need six inputs!");
         return;
     }
     if (nlhs != 2) {
@@ -347,7 +347,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     double* costRe;
     m = mxGetM(prhs[1]);
     n = mxGetN(prhs[1]);
-    res = sqrt(m);
+    height = mxGetScalar(prhs[5]);
+    width = m / height;
     cost = vector<vector<double>>(m);
     costRe = mxGetPr(prhs[1]);
     // mu
